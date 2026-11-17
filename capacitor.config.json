@@ -1,0 +1,9 @@
+{
+  "appId": "com.studiotune.pro",
+  "appName": "StudioTune Pro",
+  "webDir": "www",
+  "backgroundColor": "#09090b",
+  "android": {
+    "allowMixedContent": false
+  }
+}

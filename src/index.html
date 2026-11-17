@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>StudioTune Pro — Afinador de Guitarra de Alta Precisión</title>
+    <link rel="stylesheet" href="app.css">
+    <meta name="theme-color" content="#09090b">
+    <style>
+        body {
+            background-color: #09090b;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.07) 0%, transparent 55%),
+                radial-gradient(circle at 85% 90%, rgba(59, 130, 246, 0.05) 0%, transparent 45%);
+            color: #f4f4f5;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+            padding-top: max(0.75rem, env(safe-area-inset-top)) !important;
+            padding-bottom: max(0.75rem, env(safe-area-inset-bottom)) !important;
+        }
+
+        input, textarea { -webkit-user-select: text; user-select: text; }
+
+        /* Textura metálica sutil estilo pedal boutique */
+        .pedal-chassis {
+            background: linear-gradient(165deg, #16161d 0%, #0e0e12 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Pantalla OLED interna */
+        .oled-screen {
+            background: radial-gradient(ellipse at center, #13151a 0%, #08090b 100%);
+            box-shadow: inset 0 4px 20px rgba(0, 0, 0, 0.9), 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+
+        /* Animación suave para la aguja del medidor */
+        .needle-transition {
+            transition: transform 0.08s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        /* Personalización de scrollbar y controles */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 6px;
+            border-radius: 999px;
+            background: #27272a;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #10b981;
+            margin-top: -5px;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+            transition: transform 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.7; }
+            70% { transform: scale(1.15); opacity: 0; }
+            100% { transform: scale(0.95); opacity: 0; }
+        }
+        .animate-pulse-ring {
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-start p-3 sm:p-6 antialiased selection:bg-emerald-500/30 selection:text-emerald-200">
+
+    <!-- Barra Superior de Estudio -->
+    <header class="w-full max-w-4xl flex flex-wrap items-center justify-between gap-3 mb-4 px-1">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-neon-emerald">
+                <svg class="w-5 h-5 text-zinc-950" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-base sm:text-lg font-bold tracking-tight text-zinc-100">STUDIO<span class="text-emerald-400">TUNE</span> PRO</h1>
+                    <span class="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-zinc-800/90 text-zinc-400 border border-zinc-700/70">DSP v2.4</span>
+                </div>
+                <p class="text-xs text-zinc-500 hidden sm:block">Afinador cromático de alta precisión para guitarra y bajo</p>
+            </div>
+        </div>
+
+        <!-- Controles de Entrada: Micrófono vs Simulador -->
+        <div id="tuner-controls" class="flex items-center gap-2 bg-zinc-900/90 p-1.5 rounded-2xl border border-zinc-800/90">
+            <button id="btn-mic" onclick="toggleMicrophone()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-emerald-500 text-zinc-950 shadow-neon-emerald hover:bg-emerald-400 active:scale-95">
+                <span id="mic-indicator" class="w-2 h-2 rounded-full bg-zinc-950"></span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/>
+                </svg>
+                <span id="btn-mic-text">Activar Micrófono</span>
+            </button>
+
+            <button id="btn-sim" onclick="toggleSimulationMode()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/80 transition-all active:scale-95" title="Probar el afinador sin micrófono">
+                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"/>
+                </svg>
+                <span id="btn-sim-text">Modo Demo</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Pestañas: Afinador / Transcribir -->
+    <nav class="w-full max-w-4xl mb-4 grid grid-cols-2 gap-1 p-1 rounded-2xl bg-zinc-900/90 border border-zinc-800/90">
+        <button id="tab-tuner" class="py-2 rounded-xl text-sm font-semibold transition-all bg-emerald-500 text-zinc-950 shadow-neon-emerald">Afinador</button>
+        <button id="tab-transcribe" class="py-2 rounded-xl text-sm font-semibold transition-all text-zinc-400 hover:text-zinc-200">Transcribir acordes</button>
+    </nav>
+
+    <!-- Banner de Notificación / Estado (Reemplazo elegante de alert) -->
+    <div id="status-banner" class="hidden w-full max-w-4xl mb-4 px-4 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs sm:text-sm flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+            <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+            </svg>
+            <span id="status-banner-msg">Mensaje del sistema</span>
+        </div>
+        <button onclick="hideBanner()" class="text-amber-400 hover:text-amber-200 text-xs font-semibold px-2 py-1 rounded-lg hover:bg-amber-500/20">Cerrar</button>
+    </div>
+
+    <div id="view-tuner" class="w-full flex flex-col items-center">
+    <!-- Chasis Principal del Pedal / Afinador -->
+    <main class="w-full max-w-4xl pedal-chassis rounded-3xl p-4 sm:p-7 shadow-pedal relative overflow-hidden">
+        <!-- Tornillos decorativos de esquina estilo rack/pedal -->
+        <div class="hidden sm:block absolute top-3.5 left-3.5 w-2.5 h-2.5 rounded-full bg-zinc-800 border border-zinc-700/80 shadow-inner"></div>
+        <div class="hidden sm:block absolute top-3.5 right-3.5 w-2.5 h-2.5 rounded-full bg-zinc-800 border border-zinc-700/80 shadow-inner"></div>
+        <div class="hidden sm:block absolute bottom-3.5 left-3.5 w-2.5 h-2.5 rounded-full bg-zinc-800 border border-zinc-700/80 shadow-inner"></div>
+        <div class="hidden sm:block absolute bottom-3.5 right-3.5 w-2.5 h-2.5 rounded-full bg-zinc-800 border border-zinc-700/80 shadow-inner"></div>
+
+        <!-- Fila Superior de Configuración: Selector de Afinación + Calibración A4 -->
+        <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 mb-5">
+            <!-- Selector de Afinación -->
+            <div class="flex flex-wrap items-center gap-2 bg-zinc-900/90 p-2 rounded-2xl border border-zinc-800/80">
+                <label for="tuning-select" class="text-xs font-semibold uppercase tracking-wider text-zinc-400 pl-2 flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/>
+                    </svg>
+                    Afinación:
+                </label>
+                <select id="tuning-select" onchange="changeTuning(this.value)" class="bg-zinc-800 text-zinc-100 text-xs sm:text-sm font-semibold rounded-xl px-3 py-1.5 border border-zinc-700/80 focus:outline-none focus:border-emerald-500 transition-colors cursor-pointer">
+                    <option value="standard">Estándar (E A D G B E)</option>
+                    <option value="drop_d">Drop D (D A D G B E)</option>
+                    <option value="half_step">Medio Tono Abajo (Eb Ab Db Gb Bb Eb)</option>
+                    <option value="open_g">Open G / Sol Abierto (D G D G B D)</option>
+                    <option value="dadgad">DADGAD Celta (D A D G A D)</option>
+                    <option value="chromatic">Cromático Libre (Todas las notas)</option>
+                </select>
+                <button onclick="resetTunedStrings()" class="ml-auto sm:ml-1 text-[11px] font-medium text-zinc-400 hover:text-zinc-200 px-2.5 py-1.5 rounded-xl bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700/50 transition-colors" title="Reiniciar marcas de cuerdas afinadas">
+                    Reiniciar
+                </button>
+            </div>
+
+            <!-- Calibración de Referencia A4 (432 Hz - 446 Hz) -->
+            <div class="flex flex-wrap items-center justify-between md:justify-end gap-x-3 gap-y-2 bg-zinc-900/90 px-3.5 py-2 rounded-2xl border border-zinc-800/80">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-zinc-400">Calibración</span>
+                    <span class="whitespace-nowrap font-mono text-xs sm:text-sm font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-lg" id="a4-display">A4 = 440 Hz</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="adjustA4(-1)" class="w-7 h-7 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-sm flex items-center justify-center border border-zinc-700/70 active:scale-95 transition">−</button>
+                    <input id="a4-slider" type="range" min="432" max="446" step="1" value="440" oninput="setA4(this.value)" class="w-20 sm:w-24">
+                    <button onclick="adjustA4(1)" class="w-7 h-7 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-sm flex items-center justify-center border border-zinc-700/70 active:scale-95 transition">+</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla Central OLED del Medidor de Arco -->
+        <div id="oled-container" class="oled-screen rounded-3xl p-4 sm:p-6 border border-zinc-800/90 relative overflow-hidden transition-shadow duration-300">
+            
+            <!-- Canvas sutil de forma de onda / espectro en el fondo -->
+            <canvas id="visualizer-canvas" class="absolute inset-0 w-full h-full opacity-35 pointer-events-none"></canvas>
+
+            <!-- Barra de estado superior dentro de la pantalla -->
+            <div class="relative z-10 flex items-center justify-between gap-2 text-xs font-mono mb-1">
+                <div class="flex items-center gap-2">
+                    <span id="signal-dot" class="w-2.5 h-2.5 rounded-full bg-zinc-600 transition-colors"></span>
+                    <span id="signal-status" class="text-zinc-400 uppercase tracking-normal text-[10px] sm:text-[11px] whitespace-nowrap">EN ESPERA DE SEÑAL</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-zinc-500 text-[11px]">NIVEL:</span>
+                    <div class="w-16 sm:w-24 h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
+                        <div id="input-level-bar" class="h-full w-0 bg-gradient-to-r from-emerald-500 to-teal-300 transition-all duration-75"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medidor Semicircular SVG de Alta Precisión -->
+            <div class="relative z-10 flex flex-col items-center justify-center pt-1 pb-2">
+                <div class="w-full max-w-[440px] relative">
+                    <svg id="tuner-arc-svg" viewBox="0 0 400 215" class="w-full h-auto overflow-visible select-none">
+                        <defs>
+                            <!-- Gradiente de arco de desafinación a afinado -->
+                            <linearGradient id="arcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.85"/>
+                                <stop offset="28%" stop-color="#f59e0b" stop-opacity="0.9"/>
+                                <stop offset="46%" stop-color="#10b981" stop-opacity="1"/>
+                                <stop offset="50%" stop-color="#34d399" stop-opacity="1"/>
+                                <stop offset="54%" stop-color="#10b981" stop-opacity="1"/>
+                                <stop offset="72%" stop-color="#f59e0b" stop-opacity="0.9"/>
+                                <stop offset="100%" stop-color="#f43f5e" stop-opacity="0.85"/>
+                            </linearGradient>
+
+                            <filter id="glow-emerald" x="-30%" y="-30%" width="160%" height="160%">
+                                <feGaussianBlur stdDeviation="4" result="blur"/>
+                                <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                            </filter>
+                        </defs>
+
+                        <!-- Arco base oscuro -->
+                        <path d="M 40 190 A 160 160 0 0 1 360 190" fill="none" stroke="#1f2028" stroke-width="14" stroke-linecap="round"/>
+
+                        <!-- Arco coloreado de referencia -->
+                        <path d="M 40 190 A 160 160 0 0 1 360 190" fill="none" stroke="url(#arcGradient)" stroke-width="5" stroke-linecap="round" opacity="0.85"/>
+
+                        <!-- Zona dulce central (-3 a +3 cents) -->
+                        <path d="M 191 30.3 A 160 160 0 0 1 209 30.3" fill="none" stroke="#34d399" stroke-width="14" stroke-linecap="round" opacity="0.45"/>
+
+                        <!-- Marcas de escala (-50 a +50 cents) generadas por JS -->
+                        <g id="arc-ticks"></g>
+
+                        <!-- Etiquetas Bemol (♭) y Sostenido (♯) -->
+                        <text x="26" y="206" fill="#f59e0b" font-family="Inter, sans-serif" font-size="14" font-weight="700" text-anchor="middle">♭</text>
+                        <text x="374" y="206" fill="#f43f5e" font-family="Inter, sans-serif" font-size="14" font-weight="700" text-anchor="middle">♯</text>
+
+                        <!-- Triángulo indicador superior de 0 cents -->
+                        <polygon id="center-diamond" points="200,12 194,22 206,22" fill="#52525b" class="transition-colors duration-150"/>
+
+                        <!-- Aguja Dinámica -->
+                        <g id="tuner-needle" transform="rotate(0 200 190)" class="needle-transition">
+                            <!-- Sombra/Halo de la aguja -->
+                            <line id="needle-glow" x1="200" y1="190" x2="200" y2="34" stroke="#10b981" stroke-width="6" stroke-linecap="round" opacity="0.25"/>
+                            <!-- Cuerpo de la aguja -->
+                            <line id="needle-line" x1="200" y1="190" x2="200" y2="32" stroke="#71717a" stroke-width="3" stroke-linecap="round"/>
+                            <!-- Pivote inferior -->
+                            <circle cx="200" cy="190" r="10" fill="#18181b" stroke="#3f3f46" stroke-width="2.5"/>
+                            <circle id="needle-hub" cx="200" cy="190" r="4" fill="#71717a"/>
+                        </g>
+                    </svg>
+
+                    <!-- Lectura Central Superpuesta en la base del Arco -->
+                    <div class="mt-[-58px] sm:mt-[-68px] flex flex-col items-center text-center relative z-20">
+                        <!-- Indicador direccional de ajuste -->
+                        <div id="tuning-direction" class="h-6 flex items-center justify-center gap-2 text-xs sm:text-sm font-bold tracking-wide uppercase px-3 py-0.5 rounded-full bg-zinc-900/90 border border-zinc-800 text-zinc-400 mb-1 transition-all">
+                            <span>Toca una cuerda</span>
+                        </div>
+
+                        <!-- Nota Detectada Gigante -->
+                        <div class="flex items-baseline justify-center gap-1 my-0.5">
+                            <span id="note-name" class="text-6xl sm:text-7xl font-extrabold tracking-tighter text-zinc-200 transition-colors duration-150">--</span>
+                            <span id="note-octave" class="text-2xl sm:text-3xl font-bold font-mono text-zinc-500"></span>
+                        </div>
+
+                        <!-- Datos Técnicos: Frecuencia en Hz y Desviación en Cents -->
+                        <div class="flex items-center gap-2.5 sm:gap-4 mt-1 bg-zinc-950/80 px-3 sm:px-4 py-1.5 rounded-2xl border border-zinc-800/80 font-mono text-[11px] sm:text-sm whitespace-nowrap">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-zinc-500">FREQ:</span>
+                                <span id="freq-display" class="text-zinc-200 font-semibold">0.00 Hz</span>
+                            </div>
+                            <span class="text-zinc-700">|</span>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-zinc-500">CENTS:</span>
+                                <span id="cents-display" class="text-zinc-200 font-semibold">0 ¢</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Barra lineal secundaria de cents para lectura periférica rápida -->
+            <div class="relative z-10 mt-4 max-w-md mx-auto">
+                <div class="flex justify-between text-[10px] font-mono text-zinc-500 mb-1 px-1">
+                    <span>-50¢ (Bajo)</span>
+                    <span class="text-emerald-400 font-semibold">0¢ AFINADO</span>
+                    <span>+50¢ (Alto)</span>
+                </div>
+                <div class="h-2.5 w-full bg-zinc-900 rounded-full border border-zinc-800 relative overflow-hidden">
+                    <!-- Marcador central -->
+                    <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-emerald-400/70 -translate-x-1/2 z-10"></div>
+                    <!-- Cursor deslizante -->
+                    <div id="linear-cents-cursor" class="absolute top-0 bottom-0 w-4 -ml-2 rounded-full bg-zinc-500 transition-all duration-75" style="left: 50%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de Cuerdas de Guitarra y Tonos de Referencia -->
+        <div class="mt-6">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3 px-1">
+                <div class="flex items-center gap-2">
+                    <h2 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-300">Cuerdas & Tonos de Referencia</h2>
+                    <span id="tuning-subtitle" class="text-xs text-zinc-500 font-mono">(Estándar EADGBE)</span>
+                </div>
+                <div class="flex items-center gap-3 text-[11px] text-zinc-400">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Afinada
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"/>
+                        </svg>
+                        Pulsa para oír cuerda
+                    </span>
+                </div>
+            </div>
+
+            <!-- Contenedor dinámico de las 6 cuerdas (o vista cromática) -->
+            <div id="strings-grid" class="grid grid-cols-3 sm:grid-cols-6 gap-2.5 sm:gap-3">
+                <!-- Generado dinámicamente por JavaScript -->
+            </div>
+        </div>
+
+        <!-- Panel Interactivo del Modo Simulación (Visible solo cuando Modo Demo está activo) -->
+        <div id="sim-panel" class="hidden mt-5 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/25">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                        <h3 class="text-xs sm:text-sm font-bold text-amber-300 uppercase tracking-wider">Simulador de Cuerda Virtual Activo</h3>
+                    </div>
+                    <p class="text-xs text-zinc-400 mt-0.5">Selecciona una cuerda arriba o desliza la desafinación manual para probar la respuesta de la aguja.</p>
+                </div>
+                <div class="flex items-center gap-3 bg-zinc-900/90 px-3 py-2 rounded-xl border border-zinc-800">
+                    <span class="text-xs font-mono text-zinc-400">Desviación:</span>
+                    <input id="sim-cents-slider" type="range" min="-45" max="45" value="-18" oninput="updateSimCents(this.value)" class="w-28 sm:w-36">
+                    <span id="sim-cents-val" class="text-xs font-mono font-bold text-amber-400 w-12 text-right">-18¢</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Pie de página informativo -->
+    <footer class="w-full max-w-4xl mt-4 px-2 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-zinc-500">
+        <p>Algoritmo de autocorrelación en tiempo real (Web Audio API) • Tolerancia de estudio: ±3 cents</p>
+        <p class="font-mono">Consejo: Toca una cuerda a la vez con la pastilla del mástil para mayor estabilidad</p>
+    </footer>
+    </div><!-- /view-tuner -->
+
+        <!-- ===================== VISTA: TRANSCRIBIR (estilo reproductor) ===================== -->
+    <div id="view-transcribe" class="hidden w-full max-w-4xl flex flex-col gap-4">
+
+        <!-- ============ BIBLIOTECA ============ -->
+        <div id="tr-lib" class="flex flex-col gap-4">
+            <button id="tr-add" class="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-emerald-500 text-zinc-950 font-bold text-base shadow-neon-emerald hover:bg-emerald-400 active:scale-[0.98] transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+                Añadir canción
+            </button>
+            <section class="pedal-chassis rounded-3xl p-4 sm:p-6 shadow-pedal">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-zinc-300 mb-3">Mis canciones</h2>
+                <div id="tr-lib-list" class="flex flex-col gap-2"></div>
+                <p id="tr-lib-empty" class="text-sm text-zinc-500">Aún no tienes canciones. Pulsa «Añadir canción»: importa un archivo de audio (se analiza en segundos) o graba lo que suena en el teléfono.</p>
+            </section>
+        </div>
+
+        <!-- ============ AÑADIR CANCIÓN ============ -->
+        <div id="tr-new" class="hidden flex flex-col gap-4">
+            <div class="flex items-center gap-3">
+                <button id="tr-new-back" class="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700/70 text-zinc-200 text-xl active:scale-95" aria-label="Volver">‹</button>
+                <h2 id="tr-new-title" class="text-lg font-bold text-zinc-100">Añadir canción</h2>
+            </div>
+
+            <section id="tr-lyrics-section" class="pedal-chassis rounded-3xl p-4 sm:p-6 shadow-pedal">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-zinc-300 mb-1">Letra <span class="text-zinc-500 normal-case font-normal">(opcional)</span></h2>
+                <p class="text-[11px] text-zinc-500 mb-3">Escribe «artista título» o pega un enlace de YouTube o Spotify. Solo se usa para buscar la letra.</p>
+                <div class="flex gap-2">
+                    <input id="tr-query" type="text" inputmode="url" autocomplete="off" autocapitalize="none" placeholder="Artista y título, o enlace" class="flex-1 min-w-0 bg-zinc-800 text-zinc-100 text-sm rounded-xl px-3 py-2.5 border border-zinc-700/80 focus:outline-none focus:border-emerald-500 placeholder-zinc-500">
+                    <button id="tr-search" class="px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/80 text-sm font-semibold text-zinc-100 active:scale-95 transition">Buscar</button>
+                </div>
+                <p id="tr-search-msg" class="text-xs text-zinc-400 mt-2 empty:hidden"></p>
+                <div id="tr-results" class="mt-2 flex flex-col gap-1.5"></div>
+                <div id="tr-chosen" class="hidden mt-3 flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30"></div>
+            </section>
+
+            <section id="tr-audio-section" class="pedal-chassis rounded-3xl p-4 sm:p-6 shadow-pedal">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-zinc-300 mb-3">Audio de la canción</h2>
+
+                <button id="tr-import" class="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-emerald-500 text-zinc-950 font-bold text-sm shadow-neon-emerald hover:bg-emerald-400 active:scale-[0.98] transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg>
+                    Importar archivo de audio
+                </button>
+                <input id="tr-file" type="file" accept="audio/*" class="hidden">
+                <p class="text-[11px] text-zinc-500 mt-2">MP3, M4A, WAV u OGG del teléfono. Se analiza en segundos, sin esperar a que suene.</p>
+
+                <div id="tr-link-box" class="hidden mt-4">
+                    <button id="tr-link" class="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 active:scale-[0.98] transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H18v4.5M18 6l-7.5 7.5M10 7H6.5A1.5 1.5 0 005 8.5v9A1.5 1.5 0 006.5 19h9a1.5 1.5 0 001.5-1.5V14"/></svg>
+                        Grabar desde el enlace de arriba
+                    </button>
+                    <p class="text-[11px] text-zinc-500 mt-2">Pega un enlace de YouTube o Spotify en «Letra». La app lo abre, graba el audio del teléfono y se detiene sola al terminar la canción (dura lo mismo que la canción). Puedes dejar el teléfono: te avisará al acabar.</p>
+                </div>
+
+                <div id="tr-record-box">
+                    <div class="flex items-center gap-3 my-4"><div class="flex-1 h-px bg-zinc-800"></div><span class="text-[11px] uppercase tracking-wider text-zinc-500">o graba lo que suena</span><div class="flex-1 h-px bg-zinc-800"></div></div>
+
+                    <div id="tr-src-box" class="hidden mb-3 flex gap-1 p-1 rounded-2xl bg-zinc-900/90 border border-zinc-800/90">
+                        <button id="src-internal" class="flex-1 py-2 rounded-xl text-xs font-semibold">Audio del teléfono</button>
+                        <button id="src-mic" class="flex-1 py-2 rounded-xl text-xs font-semibold">Micrófono</button>
+                    </div>
+                    <button id="tr-mic" class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-semibold bg-zinc-800 text-zinc-100 border border-zinc-700 hover:bg-zinc-700 active:scale-[0.98] transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/></svg>
+                        <span>Grabar canción</span>
+                    </button>
+                    <p id="tr-src-help" class="text-[11px] text-zinc-500 mt-2"></p>
+
+                    <div id="tr-monitor" class="hidden oled-screen rounded-2xl mt-4 p-4 border border-zinc-800/90">
+                        <div class="flex items-center justify-between text-xs font-mono mb-2">
+                            <span class="text-zinc-500">GRABANDO <span id="tr-time" class="text-zinc-300">0:00</span></span>
+                            <div class="flex items-center gap-2"><span class="text-zinc-500 text-[11px]">NIVEL:</span>
+                                <div class="w-20 h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800"><div id="tr-level" class="h-full w-0 bg-gradient-to-r from-emerald-500 to-teal-300 transition-all duration-75"></div></div></div>
+                        </div>
+                        <div class="text-center py-1"><div id="tr-live" class="text-5xl font-extrabold text-zinc-600">—</div></div>
+                        <div id="tr-bars" class="flex gap-1 h-14 items-end mt-2"></div>
+                        <button id="tr-mark" class="hidden mt-3 w-full py-2 rounded-xl text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/40 active:scale-95 transition">Ahora empieza la letra</button>
+                    </div>
+                </div>
+
+                <button id="tr-demo" class="mt-4 w-full py-2.5 rounded-xl text-xs font-medium text-amber-300 bg-amber-500/10 border border-amber-500/30 active:scale-95 transition">Probar con una canción de ejemplo</button>
+                <p id="tr-status" class="text-xs text-emerald-300 mt-3 empty:hidden"></p>
+            </section>
+        </div>
+
+        <!-- ============ REPRODUCTOR ============ -->
+        <div id="tr-player" class="hidden flex flex-col gap-4">
+            <div id="pl-top" class="sticky top-0 z-30 rounded-3xl p-2.5 sm:p-4 bg-zinc-950/95 backdrop-blur border border-zinc-800 shadow-pedal">
+                <div class="flex items-center gap-2">
+                    <button id="pl-back" class="w-9 h-9 shrink-0 rounded-xl bg-zinc-800 border border-zinc-700/70 text-zinc-200 text-lg active:scale-95" aria-label="Volver">‹</button>
+                    <div class="min-w-0 flex-1">
+                        <div id="pl-title" class="font-bold text-zinc-100 truncate leading-tight"></div>
+                        <div id="pl-sub" class="text-[11px] font-mono text-zinc-400 truncate"></div>
+                    </div>
+                    <button id="pl-dg" class="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center border bg-zinc-800 border-zinc-700/70 text-zinc-100 active:scale-95" aria-label="Diagramas de acordes" title="Diagramas de acordes"><svg class="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2.5" y="2" width="11" height="12" rx="1"/><path d="M2.5 6h11M2.5 10h11M7 2v12"/><circle cx="10.2" cy="8" r="1.2" fill="currentColor"/></svg></button>
+                    <button id="pl-lyrics" class="px-3 py-1.5 shrink-0 rounded-xl text-xs font-semibold bg-zinc-800 border border-zinc-700/70 text-zinc-100 active:scale-95">Letra</button>
+                </div>
+
+                <div class="flex items-center justify-center gap-2">
+                    <div id="pl-prev" class="w-[4.5rem] text-right text-lg font-bold text-zinc-600 truncate"></div>
+                    <div id="pl-dg-cur" class="hidden shrink-0"></div>
+                    <div id="pl-cur" class="min-w-[8rem] text-center text-5xl font-extrabold text-emerald-400 leading-none py-1">—</div>
+                    <div id="pl-dg-next" class="hidden shrink-0 text-center opacity-80"></div>
+                    <div id="pl-next" class="w-[4.5rem] text-left text-lg font-bold text-zinc-500 truncate"></div>
+                </div>
+
+                <div id="pl-strip" class="relative flex gap-1.5 overflow-x-auto pb-1" style="scrollbar-width:none"></div>
+
+                <div id="pl-transport">
+                    <input id="pl-seek" type="range" min="0" max="100" step="0.1" value="0" class="w-full mt-0.5">
+                    <div class="flex justify-between text-[11px] font-mono text-zinc-400 -mt-1"><span id="pl-t">0:00</span><span id="pl-dur">0:00</span></div>
+                    <div class="flex items-center justify-center gap-2.5 mt-0.5">
+                        <button id="pl-speed" class="w-12 h-9 rounded-xl bg-zinc-800 border border-zinc-700/70 text-xs font-mono font-bold text-zinc-200 active:scale-95">1×</button>
+                        <button id="pl-back10" class="w-12 h-9 rounded-xl bg-zinc-800 border border-zinc-700/70 text-xs font-mono font-bold text-zinc-200 active:scale-95">−10</button>
+                        <button id="pl-play" class="w-12 h-12 rounded-full bg-emerald-500 text-zinc-950 flex items-center justify-center shadow-neon-emerald active:scale-95" aria-label="Reproducir"></button>
+                        <button id="pl-fwd10" class="w-12 h-9 rounded-xl bg-zinc-800 border border-zinc-700/70 text-xs font-mono font-bold text-zinc-200 active:scale-95">+10</button>
+                        <button id="pl-loop" class="w-12 h-9 rounded-xl bg-zinc-800 border border-zinc-700/70 text-xs font-mono font-bold text-zinc-200 active:scale-95">A-B</button>
+                    </div>
+                </div>
+                <p id="pl-status" class="hidden text-[11px] text-emerald-300 mt-1 text-center"></p>
+                <p id="pl-noaudio" class="hidden text-[11px] text-zinc-500 mt-1">Esta canción se guardó sin audio: solo se muestra el cifrado.</p>
+            </div>
+
+            <section class="pedal-chassis rounded-3xl p-4 sm:p-6 shadow-pedal">
+                <div id="tr-sheet" style="-webkit-user-select:text;user-select:text"></div>
+                <p class="text-[11px] text-zinc-500 mt-3">Toca una línea para saltar a ese punto. Toca un acorde para cambiarlo por otra opción o quitarlo. La detección automática no es perfecta.</p>
+            </section>
+
+            <section class="pedal-chassis rounded-3xl p-4 sm:p-5 shadow-pedal">
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-zinc-300">Acordes</h2>
+                    <span id="tr-key" class="text-[11px] font-mono text-zinc-400"></span>
+                </div>
+                <div id="tr-used" class="flex flex-wrap gap-2 mb-3"></div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center gap-1.5 bg-zinc-900/90 px-2 py-1 rounded-xl border border-zinc-800">
+                        <span class="text-[11px] text-zinc-400">Transponer</span>
+                        <button id="tr-tr-minus" class="w-7 h-7 rounded-lg bg-zinc-800 border border-zinc-700/70 text-zinc-200 font-bold active:scale-95">−</button>
+                        <span id="tr-transpose-val" class="w-6 text-center font-mono text-sm font-bold text-emerald-400">0</span>
+                        <button id="tr-tr-plus" class="w-7 h-7 rounded-lg bg-zinc-800 border border-zinc-700/70 text-zinc-200 font-bold active:scale-95">+</button>
+                    </div>
+                    <button id="tr-notation" class="px-3 py-1.5 rounded-xl text-xs font-mono bg-zinc-900/90 border border-zinc-800 text-zinc-300 active:scale-95">Do Re Mi</button>
+                    <button id="tr-sevenths" class="px-3 py-1.5 rounded-xl text-xs font-mono bg-zinc-900/90 border border-zinc-800 text-zinc-300 active:scale-95">Séptimas: sí</button>
+                    <button id="tr-copy" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-800 border border-zinc-700/70 text-zinc-100 active:scale-95">Copiar</button>
+                    <button id="tr-share" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-800 border border-zinc-700/70 text-zinc-100 active:scale-95">Compartir</button>
+                    <button id="tr-delete" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-500/10 border border-rose-500/30 text-rose-300 active:scale-95">Borrar</button>
+                </div>
+                <p class="text-[11px] text-zinc-500 mt-2">Transponer cambia los acordes, los diagramas y también el tono del audio (se procesa en unos segundos).</p>
+                <div id="sync-box" class="hidden mt-4 p-3 rounded-2xl bg-zinc-900/90 border border-zinc-800/80">
+                    <div class="flex items-center justify-between gap-2 mb-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-zinc-400">Sincronía con la letra</span>
+                        <span id="tr-offset-val" class="font-mono text-xs font-bold text-emerald-400">0.0 s</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="tr-off-minus" class="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700/70 text-zinc-200 font-bold active:scale-95">−</button>
+                        <input id="tr-offset" type="range" min="-30" max="120" step="0.5" value="0" class="flex-1">
+                        <button id="tr-off-plus" class="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700/70 text-zinc-200 font-bold active:scale-95">+</button>
+                    </div>
+                    <p class="text-[11px] text-zinc-500 mt-2">Si la letra va adelantada o atrasada respecto a la música, ajústala aquí.</p>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Aviso breve -->
+    <div id="tr-toast" class="hidden fixed left-1/2 -translate-x-1/2 bottom-8 z-50 px-4 py-2 rounded-full bg-zinc-100 text-zinc-900 text-sm font-semibold shadow-lg"></div>
+
+    <!-- Menú de acorde -->
+    <div id="tr-pop" class="hidden fixed inset-0 z-40 bg-black/60 flex items-end sm:items-center justify-center p-4">
+        <div class="w-full max-w-sm pedal-chassis rounded-3xl p-5 shadow-pedal">
+            <div id="tr-pop-title" class="text-sm font-semibold text-zinc-200 mb-3"></div>
+            <div class="text-[11px] text-zinc-500 mb-2">Otras opciones:</div>
+            <div id="tr-pop-list" class="flex flex-wrap gap-2 mb-4"></div>
+            <button id="tr-pop-remove" class="w-full py-2 rounded-xl text-sm font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/40 active:scale-95">Quitar este acorde</button>
+        </div>
+    </div>
+
+
+    <script>
+        /**
+         * ============================================================================
+         * CONFIGURACIÓN DE NOTAS, AFINACIONES Y ESTADO GLOBAL
+         * ============================================================================
+         */
+        const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+        // Definición de afinaciones populares (de 6ª cuerda grave a 1ª cuerda aguda)
+        const TUNINGS = {
+            standard: {
+                name: 'Estándar EADGBE',
+                strings: [
+                    { num: 6, note: 'E', octave: 2, midi: 40 },
+                    { num: 5, note: 'A', octave: 2, midi: 45 },
+                    { num: 4, note: 'D', octave: 3, midi: 50 },
+                    { num: 3, note: 'G', octave: 3, midi: 55 },
+                    { num: 2, note: 'B', octave: 3, midi: 59 },
+                    { num: 1, note: 'E', octave: 4, midi: 64 }
+                ]
+            },
+            drop_d: {
+                name: 'Drop D (DADGBE)',
+                strings: [
+                    { num: 6, note: 'D', octave: 2, midi: 38 },
+                    { num: 5, note: 'A', octave: 2, midi: 45 },
+                    { num: 4, note: 'D', octave: 3, midi: 50 },
+                    { num: 3, note: 'G', octave: 3, midi: 55 },
+                    { num: 2, note: 'B', octave: 3, midi: 59 },
+                    { num: 1, note: 'E', octave: 4, midi: 64 }
+                ]
+            },
+            half_step: {
+                name: 'Medio Tono Abajo (Eb)',
+                strings: [
+                    { num: 6, note: 'D#', octave: 2, midi: 39, alt: 'Eb2' },
+                    { num: 5, note: 'G#', octave: 2, midi: 44, alt: 'Ab2' },
+                    { num: 4, note: 'C#', octave: 3, midi: 49, alt: 'Db3' },
+                    { num: 3, note: 'F#', octave: 3, midi: 54, alt: 'Gb3' },
+                    { num: 2, note: 'A#', octave: 3, midi: 58, alt: 'Bb3' },
+                    { num: 1, note: 'D#', octave: 4, midi: 63, alt: 'Eb4' }
+                ]
+            },
+            open_g: {
+                name: 'Open G (DGDGBD)',
+                strings: [
+                    { num: 6, note: 'D', octave: 2, midi: 38 },
+                    { num: 5, note: 'G', octave: 2, midi: 43 },
+                    { num: 4, note: 'D', octave: 3, midi: 50 },
+                    { num: 3, note: 'G', octave: 3, midi: 55 },
+                    { num: 2, note: 'B', octave: 3, midi: 59 },
+                    { num: 1, note: 'D', octave: 4, midi: 62 }
+                ]
+            },
+            dadgad: {
+                name: 'DADGAD Celta',
+                strings: [
+                    { num: 6, note: 'D', octave: 2, midi: 38 },
+                    { num: 5, note: 'A', octave: 2, midi: 45 },
+                    { num: 4, note: 'D', octave: 3, midi: 50 },
+                    { num: 3, note: 'G', octave: 3, midi: 55 },
+                    { num: 2, note: 'A', octave: 3, midi: 57 },
+                    { num: 1, note: 'D', octave: 4, midi: 62 }
+                ]
+            },
+            chromatic: {
+                name: 'Cromático Libre',
+                strings: [
+                    { num: 6, note: 'E', octave: 2, midi: 40 },
+                    { num: 5, note: 'A', octave: 2, midi: 45 },
+                    { num: 4, note: 'D', octave: 3, midi: 50 },
+                    { num: 3, note: 'G', octave: 3, midi: 55 },
+                    { num: 2, note: 'B', octave: 3, midi: 59 },
+                    { num: 1, note: 'E', octave: 4, midi: 64 }
+                ]
+            }
+        };
+
+        // Estado del sistema
+        const state = {
+            a4: 440,
+            currentTuningKey: 'standard',
+            isListening: false,
+            isSimulating: false,
+            simStringIndex: 0,
+            simCentsOffset: -18,
+            audioCtx: null,
+            analyser: null,
+            micStream: null,
+            sourceNode: null,
+            animationFrameId: null,
+            timeDomainBuffer: null,
+            freqDomainBuffer: null,
+            smoothedFreq: null,
+            inTuneHoldFrames: 0,
+            tunedStrings: new Set(), // Guarda índices (0-5) de cuerdas ya afinadas
+            activeRefIndex: null
+        };
+
+        /**
+         * ============================================================================
+         * INICIALIZACIÓN DE INTERFAZ Y ESCALA SVG
+         * ============================================================================
+         */
+        window.addEventListener('DOMContentLoaded', () => {
+            buildArcTicks();
+            renderStringButtons();
+            resizeVisualizerCanvas();
+            window.addEventListener('resize', resizeVisualizerCanvas);
+            startIdleVisualizer();
+        });
+
+        // Genera las marcas graduadas del medidor semicircular de -50 a +50 cents
+        function buildArcTicks() {
+            const ticksGroup = document.getElementById('arc-ticks');
+            ticksGroup.innerHTML = '';
+            const cx = 200;
+            const cy = 190;
+            const outerR = 160;
+
+            for (let cents = -50; cents <= 50; cents += 5) {
+                // Mapeo: -50 cents -> -72 deg, +50 cents -> +72 deg
+                const angleDeg = (cents / 50) * 72;
+                const angleRad = (angleDeg - 90) * (Math.PI / 180);
+
+                const isMajor = cents % 10 === 0;
+                const isCenter = cents === 0;
+                const innerR = isCenter ? outerR - 20 : (isMajor ? outerR - 14 : outerR - 8);
+
+                const x1 = cx + innerR * Math.cos(angleRad);
+                const y1 = cy + innerR * Math.sin(angleRad);
+                const x2 = cx + outerR * Math.cos(angleRad);
+                const y2 = cy + outerR * Math.sin(angleRad);
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1.toFixed(2));
+                line.setAttribute('y1', y1.toFixed(2));
+                line.setAttribute('x2', x2.toFixed(2));
+                line.setAttribute('y2', y2.toFixed(2));
+                line.setAttribute('stroke', isCenter ? '#34d399' : (isMajor ? '#a1a1aa' : '#52525b'));
+                line.setAttribute('stroke-width', isCenter ? '3' : (isMajor ? '2' : '1.2'));
+                line.setAttribute('stroke-linecap', 'round');
+                ticksGroup.appendChild(line);
+
+                // Etiquetas numéricas cada 20 cents
+                if (cents % 20 === 0 && cents !== 0) {
+                    const textR = outerR - 27;
+                    const tx = cx + textR * Math.cos(angleRad);
+                    const ty = cy + textR * Math.sin(angleRad) + 3;
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', tx.toFixed(2));
+                    text.setAttribute('y', ty.toFixed(2));
+                    text.setAttribute('fill', '#71717a');
+                    text.setAttribute('font-family', 'JetBrains Mono, monospace');
+                    text.setAttribute('font-size', '9');
+                    text.setAttribute('font-weight', '600');
+                    text.setAttribute('text-anchor', 'middle');
+                    text.textContent = cents > 0 ? `+${cents}` : `${cents}`;
+                    ticksGroup.appendChild(text);
+                }
+            }
+        }
+
+        // Calcula frecuencia exacta en Hz a partir de nota MIDI y calibración A4
+        function midiToFreq(midi) {
+            return state.a4 * Math.pow(2, (midi - 69) / 12);
+        }
+
+        // Renderiza las tarjetas interactivas de cada cuerda
+        function renderStringButtons() {
+            const grid = document.getElementById('strings-grid');
+            const tuning = TUNINGS[state.currentTuningKey];
+            document.getElementById('tuning-subtitle').textContent = `(${tuning.name})`;
+            grid.innerHTML = '';
+
+            tuning.strings.forEach((str, idx) => {
+                const freq = midiToFreq(str.midi);
+                const isTuned = state.tunedStrings.has(idx);
+                const isSimSelected = state.isSimulating && state.simStringIndex === idx;
+
+                const btn = document.createElement('button');
+                btn.id = `string-btn-${idx}`;
+                btn.onclick = () => handleStringClick(idx);
+                btn.className = `group relative flex flex-col items-center justify-between p-3 rounded-2xl border transition-all duration-200 active:scale-95 ${
+                    isTuned
+                        ? 'bg-emerald-500/12 border-emerald-500/60 shadow-neon-emerald'
+                        : isSimSelected
+                            ? 'bg-amber-500/10 border-amber-500/50'
+                            : 'bg-zinc-900/90 border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/80'
+                }`;
+
+                btn.innerHTML = `
+                    <div class="w-full flex items-center justify-between text-[10px] font-mono mb-1">
+                        <span class="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-semibold">${str.num}ª</span>
+                        <span id="string-badge-${idx}" class="${isTuned ? 'text-emerald-400' : 'text-zinc-600 group-hover:text-zinc-300'} transition-colors">
+                            ${isTuned 
+                                ? '<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>'
+                                : '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"/></svg>'
+                            }
+                        </span>
+                    </div>
+                    <div class="flex items-baseline gap-0.5 my-0.5">
+                        <span class="text-xl sm:text-2xl font-extrabold ${isTuned ? 'text-emerald-300' : 'text-zinc-100'}">${str.note}</span>
+                        <span class="text-xs font-mono text-zinc-500">${str.octave}</span>
+                    </div>
+                    <span class="text-[11px] font-mono ${isTuned ? 'text-emerald-400/90' : 'text-zinc-500'}">${freq.toFixed(1)} Hz</span>
+                `;
+
+                grid.appendChild(btn);
+            });
+        }
+
+        /**
+         * ============================================================================
+         * SINTETIZADOR DE CUERDA PULSADA (TONO DE REFERENCIA WEB AUDIO API)
+         * ============================================================================
+         */
+        function ensureAudioContext() {
+            if (!state.audioCtx) {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                state.audioCtx = new AudioCtx();
+            }
+            if (state.audioCtx.state === 'suspended') {
+                state.audioCtx.resume();
+            }
+        }
+
+        // Reproduce un timbre cálido de cuerda de guitarra pulsada (síntesis aditiva + filtro paso bajo dinámico)
+        function playGuitarPluck(frequency) {
+            try {
+                ensureAudioContext();
+                const ctx = state.audioCtx;
+                const now = ctx.currentTime;
+                const duration = 2.4;
+
+                // Oscilador fundamental (triángulo cálido)
+                const osc1 = ctx.createOscillator();
+                osc1.type = 'triangle';
+                osc1.frequency.setValueAtTime(frequency, now);
+
+                // Oscilador de armónicos de cuerda (diente de sierra suave)
+                const osc2 = ctx.createOscillator();
+                osc2.type = 'sawtooth';
+                osc2.frequency.setValueAtTime(frequency, now);
+                osc2.detune.setValueAtTime(3, now); // Ligerísimo desafine natural de cuerpo
+
+                // Sub-armónico de octava superior sutil para brillo inicial de púa
+                const osc3 = ctx.createOscillator();
+                osc3.type = 'sine';
+                osc3.frequency.setValueAtTime(frequency * 2, now);
+
+                // Filtro paso bajo que simula el apagado progresivo de armónicos de una cuerda real
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.Q.setValueAtTime(1.8, now);
+                filter.frequency.setValueAtTime(Math.min(frequency * 7, 3600), now);
+                filter.frequency.exponentialRampToValueAtTime(Math.max(frequency * 1.4, 180), now + duration * 0.85);
+
+                // Mezcla de osciladores
+                const gainOsc1 = ctx.createGain();
+                gainOsc1.gain.setValueAtTime(0.55, now);
+
+                const gainOsc2 = ctx.createGain();
+                gainOsc2.gain.setValueAtTime(0.22, now);
+
+                const gainOsc3 = ctx.createGain();
+                gainOsc3.gain.setValueAtTime(0.18, now);
+                gainOsc3.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+                // Envolvente ADSR de cuerda pulsada
+                const masterGain = ctx.createGain();
+                masterGain.gain.setValueAtTime(0.0001, now);
+                masterGain.gain.linearRampToValueAtTime(0.38, now + 0.012); // Ataque rápido de púa
+                masterGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+                osc1.connect(gainOsc1);
+                osc2.connect(gainOsc2);
+                osc3.connect(gainOsc3);
+
+                gainOsc1.connect(filter);
+                gainOsc2.connect(filter);
+                gainOsc3.connect(filter);
+
+                filter.connect(masterGain);
+                masterGain.connect(ctx.destination);
+
+                osc1.start(now);
+                osc2.start(now);
+                osc3.start(now);
+
+                osc1.stop(now + duration);
+                osc2.stop(now + duration);
+                osc3.stop(now + duration);
+            } catch (err) {
+                console.warn('No se pudo reproducir el tono de referencia:', err);
+            }
+        }
+
+        function handleStringClick(index) {
+            const tuning = TUNINGS[state.currentTuningKey];
+            const str = tuning.strings[index];
+            const freq = midiToFreq(str.midi);
+
+            // Reproducir tono cálido de referencia
+            playGuitarPluck(freq);
+
+            // Destacar visualmente la cuerda pulsada
+            const card = document.getElementById(`string-btn-${index}`);
+            if (card) {
+                card.classList.add('ring-2', 'ring-emerald-400');
+                setTimeout(() => card.classList.remove('ring-2', 'ring-emerald-400'), 650);
+            }
+
+            // Si estamos en modo simulación, seleccionar esta cuerda como objetivo virtual
+            if (state.isSimulating) {
+                state.simStringIndex = index;
+                renderStringButtons();
+            }
+        }
+
+        /**
+         * ============================================================================
+         * CAPTURA DE MICRÓFONO Y DETECCIÓN DE TONO POR AUTOCORRELACIÓN
+         * ============================================================================
+         */
+        async function toggleMicrophone() {
+            if (state.isListening) {
+                stopMicrophone();
+            } else {
+                await startMicrophone();
+            }
+        }
+
+        async function startMicrophone() {
+            // Si estaba en modo simulación, desactivarlo primero
+            if (state.isSimulating) {
+                toggleSimulationMode(false);
+            }
+
+            try {
+                ensureAudioContext();
+
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    showBanner('Tu navegador no soporta acceso al micrófono. Usa el "Modo Demo" para probar el afinador.');
+                    return;
+                }
+
+                // Solicitar audio crudo sin filtros de voz que distorsionen los graves de la guitarra
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    }
+                });
+
+                state.micStream = stream;
+                state.sourceNode = state.audioCtx.createMediaStreamSource(stream);
+                state.analyser = state.audioCtx.createAnalyser();
+                state.analyser.fftSize = 4096; // Alta resolución para notas graves como E2 (82.4 Hz) o D2 (73.4 Hz)
+                state.analyser.smoothingTimeConstant = 0.8;
+
+                state.sourceNode.connect(state.analyser);
+
+                state.timeDomainBuffer = new Float32Array(state.analyser.fftSize);
+                state.freqDomainBuffer = new Uint8Array(state.analyser.frequencyBinCount);
+                state.isListening = true;
+                state.smoothedFreq = null;
+
+                hideBanner();
+                updateInputButtonsUI();
+                processAudioLoop();
+            } catch (err) {
+                console.error('Error al acceder al micrófono:', err);
+                showBanner('Permiso de micrófono denegado o no disponible. Activa el permiso en tu navegador o prueba el "Modo Demo".');
+            }
+        }
+
+        function stopMicrophone() {
+            state.isListening = false;
+            if (state.animationFrameId) {
+                cancelAnimationFrame(state.animationFrameId);
+                state.animationFrameId = null;
+            }
+            if (state.micStream) {
+                state.micStream.getTracks().forEach(track => track.stop());
+                state.micStream = null;
+            }
+            if (state.sourceNode) {
+                state.sourceNode.disconnect();
+                state.sourceNode = null;
+            }
+            updateInputButtonsUI();
+            resetDisplayToIdle();
+        }
+
+        /**
+         * Algoritmo de Autocorrelación Normalizada (tipo YIN / McLeod simplificado)
+         * Optimizado para rango de guitarra y bajo (60 Hz - 1100 Hz)
+         */
+        function autoCorrelatePitch(buffer, sampleRate) {
+            const size = buffer.length;
+
+            // 1. Calcular RMS (volumen de entrada)
+            let rms = 0;
+            for (let i = 0; i < size; i++) {
+                const val = buffer[i];
+                rms += val * val;
+            }
+            rms = Math.sqrt(rms / size);
+
+            // Puerta de ruido (Noise Gate): ignorar ruido ambiental bajo
+            if (rms < 0.012) {
+                return { frequency: -1, rms };
+            }
+
+            // 2. Recortar silencios iniciales/finales para mejorar precisión
+            let r1 = 0;
+            let r2 = size - 1;
+            const threshold = 0.2;
+            for (let i = 0; i < size / 2; i++) {
+                if (Math.abs(buffer[i]) < threshold) { r1 = i; break; }
+            }
+            for (let i = 1; i < size / 2; i++) {
+                if (Math.abs(buffer[size - i]) < threshold) { r2 = size - i; break; }
+            }
+
+            const trimmed = buffer.slice(r1, r2);
+            const len = trimmed.length;
+            if (len < 64) return { frequency: -1, rms };
+
+            // 3. Calcular autocorrelación
+            // (Optimización móvil: solo se calculan los retardos del rango útil, 55-1200 Hz)
+            const maxLag = Math.min(len - 2, Math.floor(sampleRate / 55) + 1);
+            const c = new Float32Array(maxLag + 2);
+            for (let i = 0; i <= maxLag + 1; i++) {
+                let sum = 0;
+                for (let j = 0; j < len - i; j++) {
+                    sum += trimmed[j] * trimmed[j + i];
+                }
+                c[i] = sum;
+            }
+
+            // 4. Encontrar el primer valle después del pico inicial en lag=0
+            let d = 0;
+            while (d < maxLag && c[d] > c[d + 1]) {
+                d++;
+            }
+
+            // 5. Buscar el pico a partir de ese valle, en el rango útil de guitarra (55 Hz a 1200 Hz)
+            const minLag = Math.max(d, Math.floor(sampleRate / 1200));
+
+            let maxVal = -1;
+            for (let i = minLag; i <= maxLag; i++) {
+                if (c[i] > maxVal) maxVal = c[i];
+            }
+
+            // Se elige el PRIMER máximo local que alcanza ≥90 % del máximo global,
+            // para evitar errores de octava (confundir el periodo con un múltiplo).
+            let maxPos = -1;
+            for (let i = Math.max(minLag, 1); i < maxLag; i++) {
+                if (c[i] >= maxVal * 0.9 && c[i] >= c[i - 1] && c[i] >= c[i + 1]) {
+                    maxPos = i;
+                    break;
+                }
+            }
+
+            if (maxPos <= 0 || maxVal < c[0] * 0.45) {
+                return { frequency: -1, rms };
+            }
+
+            // 6. Interpolación parabólica para precisión sub-muestra (decimales de Hz)
+            let T0 = maxPos;
+            if (maxPos > 0 && maxPos < maxLag + 1) {
+                const x1 = c[maxPos - 1];
+                const x2 = c[maxPos];
+                const x3 = c[maxPos + 1];
+                const a = (x1 + x3 - 2 * x2) / 2;
+                const b = (x3 - x1) / 2;
+                if (a !== 0) {
+                    T0 = T0 - b / (2 * a);
+                }
+            }
+
+            const frequency = sampleRate / T0;
+            return { frequency, rms };
+        }
+
+        // Bucle principal de análisis en tiempo real
+        function processAudioLoop() {
+            if (!state.isListening) return;
+
+            state.analyser.getFloatTimeDomainData(state.timeDomainBuffer);
+            state.analyser.getByteFrequencyData(state.freqDomainBuffer);
+
+            const { frequency, rms } = autoCorrelatePitch(state.timeDomainBuffer, state.audioCtx.sampleRate);
+
+            // Actualizar barra de nivel de entrada
+            const levelPct = Math.min(100, Math.round(rms * 420));
+            document.getElementById('input-level-bar').style.width = `${levelPct}%`;
+
+            // Dibujar forma de onda en el canvas de fondo
+            drawWaveform(state.timeDomainBuffer, frequency > 0);
+
+            if (frequency > 55 && frequency < 1200) {
+                // Suavizado exponencial ligero para evitar saltos bruscos
+                if (!state.smoothedFreq || Math.abs(frequency - state.smoothedFreq) > 15) {
+                    state.smoothedFreq = frequency;
+                } else {
+                    state.smoothedFreq = state.smoothedFreq * 0.72 + frequency * 0.28;
+                }
+                updateTunerDisplay(state.smoothedFreq);
+            } else {
+                // Mantener brevemente la última lectura o volver a espera suave
+                document.getElementById('signal-dot').className = 'w-2.5 h-2.5 rounded-full bg-zinc-600';
+                document.getElementById('signal-status').textContent = 'ESCUCHANDO...';
+            }
+
+            state.animationFrameId = requestAnimationFrame(processAudioLoop);
+        }
+
+        /**
+         * ============================================================================
+         * MODO DE SIMULACIÓN / DEMO (SIN NECESIDAD DE MICRÓFONO)
+         * ============================================================================
+         */
+        function toggleSimulationMode(forceState = null) {
+            const nextState = forceState !== null ? forceState : !state.isSimulating;
+
+            if (nextState) {
+                if (state.isListening) stopMicrophone();
+                state.isSimulating = true;
+                document.getElementById('sim-panel').classList.remove('hidden');
+                updateInputButtonsUI();
+                renderStringButtons();
+                runSimulationLoop();
+            } else {
+                state.isSimulating = false;
+                document.getElementById('sim-panel').classList.add('hidden');
+                if (state.animationFrameId) {
+                    cancelAnimationFrame(state.animationFrameId);
+                    state.animationFrameId = null;
+                }
+                updateInputButtonsUI();
+                renderStringButtons();
+                resetDisplayToIdle();
+            }
+        }
+
+        function updateSimCents(val) {
+            state.simCentsOffset = parseFloat(val);
+            const sign = state.simCentsOffset > 0 ? '+' : '';
+            document.getElementById('sim-cents-val').textContent = `${sign}${state.simCentsOffset}¢`;
+        }
+
+        function runSimulationLoop() {
+            if (!state.isSimulating) return;
+
+            const tuning = TUNINGS[state.currentTuningKey];
+            const targetStr = tuning.strings[state.simStringIndex];
+            const targetFreq = midiToFreq(targetStr.midi);
+
+            // Añadir ligera vibración orgánica realista (+/- 0.6 cents)
+            const t = performance.now() * 0.004;
+            const organicJitter = Math.sin(t) * 0.45 + Math.cos(t * 2.3) * 0.25;
+            const totalCents = state.simCentsOffset + organicJitter;
+
+            const simulatedFreq = targetFreq * Math.pow(2, totalCents / 1200);
+
+            document.getElementById('input-level-bar').style.width = '68%';
+            drawSimulatedWave(simulatedFreq, t);
+            updateTunerDisplay(simulatedFreq);
+
+            state.animationFrameId = requestAnimationFrame(runSimulationLoop);
+        }
+
+        /**
+         * ============================================================================
+         * CÁLCULO MUSICAL Y ACTUALIZACIÓN VISUAL DEL MEDIDOR
+         * ============================================================================
+         */
+        function updateTunerDisplay(freq) {
+            // Calcular número de nota MIDI continuo respecto a A4 calibrado
+            const midiFloat = 69 + 12 * Math.log2(freq / state.a4);
+            const nearestMidi = Math.round(midiFloat);
+            const cents = (midiFloat - nearestMidi) * 100;
+
+            // Obtener nombre de nota y octava
+            const noteIndex = ((nearestMidi % 12) + 12) % 12;
+            const octave = Math.floor(nearestMidi / 12) - 1;
+            const noteName = NOTE_NAMES[noteIndex];
+
+            // Limitar cents visuales a [-50, +50]
+            const clampedCents = Math.max(-50, Math.min(50, cents));
+            const absCents = Math.abs(clampedCents);
+
+            // Determinar estado de afinación:
+            // <= 3.5 cents: Afinado (Verde Neón / Esmeralda)
+            // <= 15 cents: Cerca (Ámbar)
+            // > 15 cents: Desafinado (Rojo / Ámbar intenso)
+            const isInTune = absCents <= 3.5;
+            const isClose = absCents > 3.5 && absCents <= 15;
+
+            // Actualizar textos principales
+            const noteEl = document.getElementById('note-name');
+            const octaveEl = document.getElementById('note-octave');
+            const freqEl = document.getElementById('freq-display');
+            const centsEl = document.getElementById('cents-display');
+            const dirEl = document.getElementById('tuning-direction');
+            const oledEl = document.getElementById('oled-container');
+
+            noteEl.textContent = noteName;
+            octaveEl.textContent = octave;
+            freqEl.textContent = `${freq.toFixed(2)} Hz`;
+
+            const roundedCents = Math.round(clampedCents);
+            centsEl.textContent = `${roundedCents > 0 ? '+' : ''}${roundedCents} ¢`;
+
+            // Estado de señal
+            document.getElementById('signal-dot').className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-neon-emerald';
+            document.getElementById('signal-status').textContent = state.isSimulating ? 'SEÑAL SIMULADA' : 'SEÑAL DETECTADA';
+
+            // Rotación de la aguja (-72° a +72°)
+            const angle = (clampedCents / 50) * 72;
+            const needleGroup = document.getElementById('tuner-needle');
+            needleGroup.setAttribute('transform', `rotate(${angle.toFixed(2)} 200 190)`);
+
+            // Cursor lineal secundario
+            const cursorPct = 50 + clampedCents;
+            const linearCursor = document.getElementById('linear-cents-cursor');
+            linearCursor.style.left = `${cursorPct}%`;
+
+            // Colores dinámicos según precisión
+            const needleLine = document.getElementById('needle-line');
+            const needleGlow = document.getElementById('needle-glow');
+            const needleHub = document.getElementById('needle-hub');
+            const centerDiamond = document.getElementById('center-diamond');
+
+            if (isInTune) {
+                // AFINADO (Verde Esmeralda Neón)
+                noteEl.className = 'text-6xl sm:text-7xl font-extrabold tracking-tighter text-emerald-400 drop-shadow-[0_0_16px_rgba(16,185,129,0.55)] transition-colors duration-150';
+                centsEl.className = 'text-emerald-400 font-bold';
+                dirEl.className = 'h-6 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold tracking-wide uppercase px-3.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 mb-1 shadow-neon-emerald';
+                dirEl.innerHTML = '<span>✓ AFINADO PERFECTO</span>';
+
+                needleLine.setAttribute('stroke', '#34d399');
+                needleGlow.setAttribute('stroke', '#10b981');
+                needleGlow.setAttribute('opacity', '0.55');
+                needleHub.setAttribute('fill', '#34d399');
+                centerDiamond.setAttribute('fill', '#34d399');
+                linearCursor.className = 'absolute top-0 bottom-0 w-4 -ml-2 rounded-full bg-emerald-400 shadow-neon-emerald transition-all duration-75';
+                oledEl.style.boxShadow = 'inset 0 4px 24px rgba(0, 0, 0, 0.9), 0 0 30px -10px rgba(16, 185, 129, 0.35)';
+
+                // Verificar si coincide con alguna cuerda de la afinación actual para marcarla como completada
+                checkAndMarkTunedString(nearestMidi);
+            } else if (isClose) {
+                // CERCA (Ámbar)
+                state.inTuneHoldFrames = 0;
+                const isFlat = clampedCents < 0;
+                noteEl.className = 'text-6xl sm:text-7xl font-extrabold tracking-tighter text-amber-300 transition-colors duration-150';
+                centsEl.className = 'text-amber-400 font-semibold';
+                dirEl.className = 'h-6 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold tracking-wide uppercase px-3 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 mb-1';
+                dirEl.innerHTML = isFlat ? '<span>▲ TENSAR UN POCO (♭)</span>' : '<span>▼ AFLOJAR UN POCO (♯)</span>';
+
+                needleLine.setAttribute('stroke', '#fbbf24');
+                needleGlow.setAttribute('stroke', '#f59e0b');
+                needleGlow.setAttribute('opacity', '0.35');
+                needleHub.setAttribute('fill', '#fbbf24');
+                centerDiamond.setAttribute('fill', '#52525b');
+                linearCursor.className = 'absolute top-0 bottom-0 w-4 -ml-2 rounded-full bg-amber-400 transition-all duration-75';
+                oledEl.style.boxShadow = 'inset 0 4px 20px rgba(0, 0, 0, 0.9)';
+            } else {
+                // DESAFINADO (Rojo / Ámbar intenso)
+                state.inTuneHoldFrames = 0;
+                const isFlat = clampedCents < 0;
+                noteEl.className = 'text-6xl sm:text-7xl font-extrabold tracking-tighter text-rose-400 transition-colors duration-150';
+                centsEl.className = 'text-rose-400 font-semibold';
+                dirEl.className = 'h-6 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold tracking-wide uppercase px-3 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/40 text-rose-300 mb-1';
+                dirEl.innerHTML = isFlat ? '<span>▲ MUY BAJO / BEMOL (♭)</span>' : '<span>▼ MUY ALTO / SOSTENIDO (♯)</span>';
+
+                needleLine.setAttribute('stroke', '#fb7185');
+                needleGlow.setAttribute('stroke', '#f43f5e');
+                needleGlow.setAttribute('opacity', '0.3');
+                needleHub.setAttribute('fill', '#fb7185');
+                centerDiamond.setAttribute('fill', '#52525b');
+                linearCursor.className = 'absolute top-0 bottom-0 w-4 -ml-2 rounded-full bg-rose-500 transition-all duration-75';
+                oledEl.style.boxShadow = 'inset 0 4px 20px rgba(0, 0, 0, 0.9)';
+            }
+        }
+
+        // Marca la cuerda como afinada si se mantiene estable en verde durante ~18 frames
+        function checkAndMarkTunedString(detectedMidi) {
+            state.inTuneHoldFrames++;
+            if (state.inTuneHoldFrames === 18) {
+                const tuning = TUNINGS[state.currentTuningKey];
+                const matchIdx = tuning.strings.findIndex(s => s.midi === detectedMidi);
+                if (matchIdx !== -1 && !state.tunedStrings.has(matchIdx)) {
+                    state.tunedStrings.add(matchIdx);
+                    renderStringButtons();
+                }
+            }
+        }
+
+        function resetDisplayToIdle() {
+            document.getElementById('note-name').textContent = '--';
+            document.getElementById('note-name').className = 'text-6xl sm:text-7xl font-extrabold tracking-tighter text-zinc-200 transition-colors duration-150';
+            document.getElementById('note-octave').textContent = '';
+            document.getElementById('freq-display').textContent = '0.00 Hz';
+            document.getElementById('cents-display').textContent = '0 ¢';
+            document.getElementById('cents-display').className = 'text-zinc-200 font-semibold';
+            document.getElementById('tuning-direction').className = 'h-6 flex items-center justify-center gap-2 text-xs sm:text-sm font-bold tracking-wide uppercase px-3 py-0.5 rounded-full bg-zinc-900/90 border border-zinc-800 text-zinc-400 mb-1';
+            document.getElementById('tuning-direction').innerHTML = '<span>Toca una cuerda</span>';
+            document.getElementById('signal-dot').className = 'w-2.5 h-2.5 rounded-full bg-zinc-600';
+            document.getElementById('signal-status').textContent = 'EN ESPERA DE SEÑAL';
+            document.getElementById('input-level-bar').style.width = '0%';
+            document.getElementById('tuner-needle').setAttribute('transform', 'rotate(0 200 190)');
+            document.getElementById('needle-line').setAttribute('stroke', '#71717a');
+            document.getElementById('needle-glow').setAttribute('opacity', '0.15');
+            document.getElementById('needle-hub').setAttribute('fill', '#71717a');
+            document.getElementById('center-diamond').setAttribute('fill', '#52525b');
+            document.getElementById('linear-cents-cursor').style.left = '50%';
+            document.getElementById('linear-cents-cursor').className = 'absolute top-0 bottom-0 w-4 -ml-2 rounded-full bg-zinc-500 transition-all duration-75';
+            document.getElementById('oled-container').style.boxShadow = '';
+            startIdleVisualizer();
+        }
+
+        /**
+         * ============================================================================
+         * VISUALIZADOR DE FORMA DE ONDA / ESPECTRO EN CANVAS DE FONDO
+         * ============================================================================
+         */
+        function resizeVisualizerCanvas() {
+            const canvas = document.getElementById('visualizer-canvas');
+            if (!canvas) return;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+        }
+
+        function drawWaveform(buffer, hasPitch) {
+            const canvas = document.getElementById('visualizer-canvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+            ctx.lineWidth = 2 * window.devicePixelRatio;
+            ctx.strokeStyle = hasPitch ? 'rgba(16, 185, 129, 0.55)' : 'rgba(113, 113, 122, 0.35)';
+
+            ctx.beginPath();
+            const step = Math.ceil(buffer.length / 260);
+            const sliceWidth = w / (buffer.length / step);
+            let x = 0;
+
+            for (let i = 0; i < buffer.length; i += step) {
+                const v = buffer[i] * 2.4;
+                const y = (h / 2) + v * (h * 0.36);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+                x += sliceWidth;
+            }
+            ctx.stroke();
+        }
+
+        function drawSimulatedWave(freq, timePhase) {
+            const canvas = document.getElementById('visualizer-canvas');
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+            ctx.lineWidth = 2 * window.devicePixelRatio;
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
+
+            ctx.beginPath();
+            const cycles = Math.max(3, freq / 38);
+            for (let x = 0; x <= w; x += 4) {
+                const normX = x / w;
+                const envelope = Math.sin(normX * Math.PI);
+                const wave = Math.sin(normX * Math.PI * 2 * cycles - timePhase * 4) * 0.7 +
+                             Math.sin(normX * Math.PI * 4 * cycles - timePhase * 8) * 0.3;
+                const y = (h / 2) + wave * envelope * (h * 0.22);
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+
+        function startIdleVisualizer() {
+            const canvas = document.getElementById('visualizer-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Línea de reposo sutil
+            ctx.strokeStyle = 'rgba(63, 63, 70, 0.4)';
+            ctx.lineWidth = 1.5 * window.devicePixelRatio;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+        }
+
+        /**
+         * ============================================================================
+         * CONTROLES DE AFINACIÓN, CALIBRACIÓN A4 Y ESTADO UI
+         * ============================================================================
+         */
+        function changeTuning(key) {
+            state.currentTuningKey = key;
+            state.tunedStrings.clear();
+            state.simStringIndex = 0;
+            renderStringButtons();
+        }
+
+        function resetTunedStrings() {
+            state.tunedStrings.clear();
+            renderStringButtons();
+        }
+
+        function setA4(val) {
+            const clamped = Math.max(432, Math.min(446, parseInt(val, 10) || 440));
+            state.a4 = clamped;
+            document.getElementById('a4-slider').value = clamped;
+            document.getElementById('a4-display').textContent = `A4 = ${clamped} Hz`;
+            renderStringButtons();
+        }
+
+        function adjustA4(delta) {
+            setA4(state.a4 + delta);
+        }
+
+        function updateInputButtonsUI() {
+            const btnMic = document.getElementById('btn-mic');
+            const btnMicText = document.getElementById('btn-mic-text');
+            const micDot = document.getElementById('mic-indicator');
+
+            const btnSim = document.getElementById('btn-sim');
+            const btnSimText = document.getElementById('btn-sim-text');
+
+            if (state.isListening) {
+                btnMic.className = 'flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-rose-500 text-white shadow-neon-rose hover:bg-rose-400 active:scale-95';
+                btnMicText.textContent = 'Detener Micrófono';
+                micDot.className = 'w-2 h-2 rounded-full bg-white animate-ping';
+            } else {
+                btnMic.className = 'flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-emerald-500 text-zinc-950 shadow-neon-emerald hover:bg-emerald-400 active:scale-95';
+                btnMicText.textContent = 'Activar Micrófono';
+                micDot.className = 'w-2 h-2 rounded-full bg-zinc-950';
+            }
+
+            if (state.isSimulating) {
+                btnSim.className = 'flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 transition-all active:scale-95';
+                btnSimText.textContent = 'Salir Demo';
+            } else {
+                btnSim.className = 'flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/80 transition-all active:scale-95';
+                btnSimText.textContent = 'Modo Demo';
+            }
+        }
+
+        function showBanner(msg) {
+            const banner = document.getElementById('status-banner');
+            document.getElementById('status-banner-msg').textContent = msg;
+            banner.classList.remove('hidden');
+        }
+
+        function hideBanner() {
+            document.getElementById('status-banner').classList.add('hidden');
+        }
+    </script>
+    <script src="chords.js"></script>
+    <script src="pcm.js"></script>
+    <script src="pitch.js"></script>
+    <script src="shapes.js"></script>
+    <script src="transcribe.js"></script>
+</body>
+</html>
