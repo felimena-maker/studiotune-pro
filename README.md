@@ -90,5 +90,7 @@ node test/bench.js        # banco con canciones sintéticas difíciles (tarda un
 
 ## Licencias
 
+El código de este proyecto es de uso libre bajo la licencia [MIT](LICENSE). Las librerías de terceros mantienen la suya:
+
 Cambio de tono: [SoundTouchJS](https://github.com/cutterbl/SoundTouchJS) (LGPL-2.1). Fuentes Inter y JetBrains Mono (OFL).
 Letras: [LRCLIB](https://lrclib.net).
